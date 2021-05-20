@@ -1,5 +1,5 @@
-import random
 import sqlite3
+import random
 
 
 class CardAnatomy:
@@ -12,7 +12,6 @@ class CardAnatomy:
         self.cur = None
         self.number = None
 
-    # conduct and connect to database
     def database(self):
         self.conn = sqlite3.connect('card.s3db')
         self.cur = self.conn.cursor()
@@ -20,12 +19,10 @@ class CardAnatomy:
             'create table if not exists card(id integer, number text, pin text, balance integer default 0)')
         self.conn.commit()
 
-    # save account information to database function
     def store_data(self):
         self.cur.execute(f'insert into card(number, pin) values({self.card_num},{self.card_pin})')
         self.conn.commit()
 
-    # main menu of ATM
     def main(self):
         self.database()
         print("1. Create an account\n2. Log into account\n0. Exit")
@@ -33,14 +30,13 @@ class CardAnatomy:
         if choose == 1:
             return self.account()
         elif choose == 2:
-            return self.Login()
+            return self.login()
         elif choose == 0:
             print("Bye!")
             pass
         else:
             pass
 
-    # create an account function
     def account(self):
         print("\nYour card has been created")
         self.card_num = ['4', '0', '0', '0', '0', '0']
@@ -60,7 +56,6 @@ class CardAnatomy:
         self.store_data()
         return self.main()
 
-    # make an account along with luhn algorithm
     def luhn(self):
         for i in range(0, 9, 2):
             self.check[i] *= 2
@@ -73,47 +68,45 @@ class CardAnatomy:
         self.card_num.append("0" if last == "10" else last)
         self.check = []
 
-    # login to account function
     def login(self):
         print("\nEnter your card number:")
         self.number = input()
         print("Enter your PIN:")
         pin = input()
-        login = self.cur.execute('select number, pin from card')
+        self.cur.execute('select number, pin from card')
         login_ = self.cur.fetchall()
         for i in range(0, len(login_)):
             if login_[i][0] == self.number:
                 if login_[i][1] == pin:
                     print("\nYou have successfully logged in!\n")
-                    return self.submain()
+                    return self.sub_main()
                 else:
                     print("Wrong card number or PIN!")
                     return self.main()
         print("Wrong card number or PIN!")
         return self.main()
 
-    # sub-main menu after log in succeed!
-    def submain(self):
-        print("1. Balance\n2. Add income\n3. Do transfer\n4. Close account\n5. Log out\n0. Exit")
+    def sub_main(self):
+        print("1. Balance\n2. Add income\n3. Do transfer\n4. Close account\n5. Log out\n0. Exit\n")
         choice = int(input())
         if choice == 1:
             self.cur.execute(f'select balance from card where number = {self.number}')
             balance = self.cur.fetchone()
             print(f"Balance: {balance[0]}\n")
-            return self.submain()
+            return self.sub_main()
         elif choice == 2:
             print("Enter income:")
             income = int(input())
             self.cur.execute(f'update card set balance = balance + {income} where number = {self.number}')
             self.conn.commit()
             print("Income was added!\n")
-            return self.submain()
+            return self.sub_main()
         elif choice == 3:
             return self.transfer()
         elif choice == 4:
             self.cur.execute(f'delete from card where number = {self.number}')
             self.conn.commit()
-            return self.submain()
+            return self.sub_main()
         elif choice == 5:
             print("\nYou have successfully logged out!\n")
             return self.main()
@@ -121,7 +114,6 @@ class CardAnatomy:
             print("\nBye!")
             pass
 
-    # Tranfer money function
     def transfer(self):
         print("Transfer\nEnter card number:")
         enter = input()
@@ -130,6 +122,9 @@ class CardAnatomy:
         luhn = []
         for w in enter:
             luhn.append(int(w))
+        if len(luhn) != 16:
+            print("wrong number!!!")
+            return self.sub_main()
         for j in range(0, 15, 2):
             luhn[j] *= 2
             if luhn[j] > 9:
@@ -144,10 +139,10 @@ class CardAnatomy:
             pass
         if last != luhn[15]:
             print("Probably you made mistake in the card number. Please try again!\n")
-            return self.submain()
+            return self.sub_main()
         if enter == self.number:
             print("You can't transfer money to the same account!\n")
-            return self.submain()
+            return self.sub_main()
         for num in range(len(enter_)):
             if enter in enter_[num]:
                 print("Enter how much money you want to transfer:")
@@ -156,16 +151,16 @@ class CardAnatomy:
                 money_ = self.cur.fetchone()
                 if money > money_[0]:
                     print("Not enough money!")
-                    return self.submain()
+                    return self.sub_main()
                 else:
                     self.cur.execute(f'update card set balance = balance - {money} where number = {self.number}')
                     self.cur.execute(f'update card set balance = balance + {money} where number = {enter}')
                     self.conn.commit()
                     print("Success!")
-                    return self.submain()
+                    return self.sub_main()
         print("Such a card does not exist.\n")
-        return self.submain()
+        return self.sub_main()
 
 
-card_sys = CardAnatomy()
-card_sys.main()
+banking_system = CardAnatomy()
+banking_system.main()
