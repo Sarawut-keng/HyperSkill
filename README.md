@@ -15,3 +15,6 @@ these python code files are my own solution to pass the task of each project fro
 	##### About
 	Everything goes digital these days, and so does money. Today, most people have credit cards, which save us time, energy and nerves. From not having to carry a wallet full of cash to consumer protection, cards make our lives easier in many ways. In this project, you will develop a simple banking system with database.
 
+ - **Food Blog Backend (In Progress)**
+	##### About
+	Your great-grandmother asked you to copy "to these computers" all the recipes that she had been collecting in her notebook for several decades. You don't like the easy ways, so you decide to build a recipe database. You will need to refresh your SQL knowledge to build a simple backend.
