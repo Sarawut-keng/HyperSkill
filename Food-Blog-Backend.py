@@ -3,16 +3,21 @@ import sqlite3
 
 class FoodBlog:
 
-    def __int__(self):
-        self.conn = None
+    def __init__(self):
         self.query = None
+        self.conn = None
 
     def create_table(self):
         self.conn = sqlite3.connect('food_blog.db')
         self.query = self.conn.cursor()
-        self.query.execute('CREATE TABLE meals (meal_id INTEGER PRIMARY KEY, meal_name VARCHAR NOT NULL UNIQUE)')
-        self.query.execute('CREATE TABLE ingredients (ingredient_id INTEGER PRIMARY KEY, ingredient_name VARCHAR NOT NULL UNIQUE)')
-        self.query.execute('CREATE TABLE measures (measure_id INTEGER PRIMARY KEY, measure_name VARCHAR UNIQUE)')
+        self.query.execute('CREATE TABLE IF NOT EXISTS meals (meal_id INTEGER PRIMARY KEY, '
+                           'meal_name VARCHAR NOT NULL UNIQUE)')
+        self.query.execute('CREATE TABLE IF NOT EXISTS ingredients (ingredient_id INTEGER PRIMARY KEY, '
+                           'ingredient_name VARCHAR NOT NULL UNIQUE)')
+        self.query.execute('CREATE TABLE IF NOT EXISTS measures (measure_id INTEGER PRIMARY KEY, '
+                           'measure_name VARCHAR UNIQUE)')
+        self.query.execute('CREATE TABLE IF NOT EXISTS recipes (recipe_id INTEGER PRIMARY KEY, '
+                           'recipe_name VARCHAR NOT NULL, recipe_description VARCHAR)')
         self.conn.commit()
         return self.add_data()
 
@@ -29,6 +34,18 @@ class FoodBlog:
                 elif key == "ingredients":
                     self.query.execute(f"INSERT INTO ingredients(ingredient_name) VALUES ('{value}')")
                 self.conn.commit()
+        return self.ask_for_recipe()
+
+    def ask_for_recipe(self):
+        while True:
+            recipe_name = input()
+            if len(recipe_name) == 0:
+                self.conn.close()
+                exit()
+            recipe_description = input()
+            self.query.execute(f'INSERT INTO recipes (recipe_name, recipe_description) '
+                               f'VALUES ("{recipe_name}", "{recipe_description}")')
+            self.conn.commit()
 
 
 start = FoodBlog()
