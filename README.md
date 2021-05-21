@@ -1,4 +1,4 @@
-<img src="img/jetbrains_logo.png" width="50">
+<img src="img/jetbrains_logo.png" width="100">
 
 # Jetbrains Academy
 
