@@ -1,14 +1,15 @@
 import sqlite3
+import argparse
 
 
 class FoodBlog:
 
     def __init__(self):
-        self.query = None
         self.conn = None
+        self.query = None
 
-    def create_table(self):
-        self.conn = sqlite3.connect('food_blog.db')
+    def create_table(self, data):
+        self.conn = sqlite3.connect(data)
         self.query = self.conn.cursor()
         self.query.execute('CREATE TABLE IF NOT EXISTS meals (meal_id INTEGER PRIMARY KEY, '
                            'meal_name VARCHAR NOT NULL UNIQUE)')
@@ -30,22 +31,55 @@ class FoodBlog:
                            'FOREIGN KEY (ingredient_id) REFERENCES ingredients(ingredient_id), '
                            'FOREIGN KEY (recipe_id) REFERENCES recipes(recipe_id))')
         self.conn.commit()
-        return self.add_data()
+        self.add_data()
+
+    def parser_method(self, data, me, ing):
+        self.conn = sqlite3.connect(data)
+        self.query = self.conn.cursor()
+        recipe_names = self.query.execute(f"select recipe_id, recipe_name from recipes where recipe_id in  "
+                                          f"(select recipe_id from serve where meal_id in "
+                                          f"(select meal_id from meals where meal_name in ({me})) "
+                                          f"INTERSECT "
+                                          f"select recipe_id from quantity as quantity_ where ingredient_id in"
+                                          f"(select ingredient_id from ingredients where "
+                                          f"ingredient_name in ({ing}))) ORDER BY recipe_name")
+        recipe_names = recipe_names.fetchall()
+        _name = self.query.execute(f"select ingredient_name from ingredients")
+        _name = _name.fetchall()
+        list_of_names = [value[0] for value in _name]
+        for x in ing.replace("'", "").replace(" ", "").split(","):
+            if x in list_of_names:
+                pass
+            else:
+                print("There are no such recipes in the database.")
+                exit()
+        if recipe_names is None:
+            print("There are no such recipes in the database.")
+            exit()
+        else:
+            for value in recipe_names:
+                check = self.query.execute(f"select ingredient_id from quantity where recipe_id ={value[0]}")
+                check = check.fetchall()
+                check_ = self.query.execute(f"select ingredient_id from ingredients where ingredient_name in ({ing})")
+                check_ = check_.fetchall()
+                if len(ing.split(",")) != len(set(check) & set(check_)):
+                    recipe_names.remove(value)
+            name = ""
+            for value in recipe_names:
+                name += value[1] + ", "
+            print("Recipes selected for you: " + name[:-2])
+            exit()
 
     def add_data(self):
-        check = self.query.execute(f"SELECT * FROM measures")
-        check = check.fetchall()
-        if check[0] is not None:
-            return self.ask_for_recipe()
         data = {"meals": ("breakfast", "brunch", "lunch", "supper"),
                 "ingredients": ("milk", "cacao", "strawberry", "blueberry", "blackberry", "sugar"),
                 "measures": ("ml", "g", "l", "cup", "tbsp", "tsp", "dsp", "")}
         for key in data:
             for value in data[key]:
                 if key == "measures":
-                    self.query.execute(f"INSERT INTO measures(measure_name) VALUES ('{value}')")
+                    self.query.execute(f"INSERT INTO measures (measure_name) VALUES ('{value}')")
                 elif key == "meals":
-                    self.query.execute(f"INSERT INTO meals(meal_name) VALUES ('{value}')")
+                    self.query.execute(f"INSERT INTO meals (meal_name) VALUES ('{value}')")
                 elif key == "ingredients":
                     self.query.execute(f"INSERT INTO ingredients(ingredient_name) VALUES ('{value}')")
         self.conn.commit()
@@ -63,8 +97,10 @@ class FoodBlog:
                                f'VALUES ("{recipe_name}", "{recipe_description}")')
             meal_name = self.query.execute('SELECT meal_id, meal_name from meals')
             meal_name_ = meal_name.fetchall()
+            meal_str = ""
             for i in meal_name_:
-                print(f'{i[0]}) {i[1]}')
+                meal_str += str(i[0]) + ") " + str(i[1]) + "  "
+            print(meal_str[:-2])
             recipe_id = self.query.execute('SELECT recipe_id from recipes').lastrowid
             served_dishes = input("Enter proposed meals separated by a space: ").split(" ")
             for num in served_dishes:
@@ -75,7 +111,7 @@ class FoodBlog:
     def ask_for_quantity(self, recipe_id):
         while True:
             quantity_input = input("Input quantity of ingredient <press enter to stop>: ")
-            if len(quantity_input) == 0:
+            if len(quantity_input) == 0 or len(quantity_input) == 1:
                 break
             else:
                 quantity_input = quantity_input.split(" ")
@@ -90,8 +126,10 @@ class FoodBlog:
                 if ingredient is None:
                     print("The measure is not conclusive!")
                 else:
-                    self.query.execute(f'INSERT INTO quantity (quantity, recipe_id, measure_id, ingredient_id) '
-                                       f'VALUES ("{quantity_input[0]}", "{recipe_id}", "{measure[0]}", "{ingredient[0]}")')
+                    self.query.execute(f'INSERT INTO quantity '
+                                       f'(quantity, recipe_id, measure_id, ingredient_id) '
+                                       f'VALUES '
+                                       f'("{quantity_input[0]}", "{recipe_id}", "{measure[0]}", "{ingredient[0]}")')
                     self.conn.commit()
             if len(quantity_input) == 3:
                 ingredient = self.query.execute(f'SELECT ingredient_id FROM ingredients '
@@ -104,10 +142,29 @@ class FoodBlog:
                 if ingredient is None or measure is None:
                     print("The measure is not conclusive!")
                 else:
-                    self.query.execute(f'INSERT INTO quantity (quantity, recipe_id, measure_id, ingredient_id) '
-                                       f'VALUES ("{quantity_input[0]}", "{recipe_id}", "{measure[0]}", "{ingredient[0]}")')
+                    self.query.execute(f'INSERT INTO quantity '
+                                       f'(quantity, recipe_id, measure_id, ingredient_id) '
+                                       f'VALUES '
+                                       f'("{quantity_input[0]}", "{recipe_id}", "{measure[0]}", "{ingredient[0]}")')
                     self.conn.commit()
 
 
-start = FoodBlog()
-start.create_table()
+if __name__ == '__main__':
+    start = FoodBlog()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("food_blog")
+    parser.add_argument("--ingredients")
+    parser.add_argument("--meals")
+    args = parser.parse_args()
+    if args.meals is None:
+        start.create_table(args.food_blog)
+    else:
+        if "," not in args.meals:
+            the_meal = "'" + args.meals + "'"
+        else:
+            the_meal = "'" + args.meals.replace(" ", "").replace(",", "', '") + "'"
+        if "," not in args.ingredients:
+            the_ingredient = "'" + args.ingredients + "'"
+        else:
+            the_ingredient = "'" + args.ingredients.replace(" ", "").replace(",", "', '") + "'"
+        start.parser_method(args.food_blog, the_meal, the_ingredient)
